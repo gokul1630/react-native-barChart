@@ -1,123 +1,195 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text as RNText, Touchable } from 'react-native';
-import { ClipPath, Defs, G, Line, Rect, Svg, Text } from 'react-native-svg';
-
-const data = [
-	{
-		percentage: 10,
-	},
-	{
-		percentage: 70,
-	},
-	{
-		percentage: 65.89,
-	},
-	{
-		percentage: 45,
-	},
-	{
-		percentage: 33.66,
-	},
-	{
-		percentage: 100,
-	},
-
-];
-
+import React, {useState} from 'react';
+import {Button, Text as RNText, View} from 'react-native';
+import {
+  ClipPath,
+  Defs,
+  G,
+  Line,
+  LinearGradient,
+  Rect,
+  Stop,
+  Svg,
+  Text,
+} from 'react-native-svg';
 
 function roundUp(num) {
-	if (num < 50) {
-		return Math.ceil(num / 5) * 5;
-	} else {
-		return Math.ceil(num / 10) * 10;
-	}
+  if (num < 50) {
+    return Math.ceil(num / 5) * 5;
+  } else {
+    return Math.ceil(num / 10) * 10;
+  }
 }
 
-const height = 380
-const XLabelHeightOffset = 60
-const YaxisLabelHeightOffset = height - XLabelHeightOffset
+const XLabelHeightOffset = 60;
 
-const ROWS_LINE_COUNT = 5
+const initialState = {
+  x: 0,
+  y: 0,
+  containerWidth: 0,
+  selectedIndex: null,
+};
 
-const maxYValue = roundUp(data.reduce((a, b) => b.percentage > a.percentage ? b : a)?.percentage)
+const Chart = ({
+  containerStyle,
+  gridLineCount = 5,
+  height = 400,
+  chartData = [],
+}) => {
+  const [state, setState] = useState(initialState);
+  const {containerWidth, x, y, selectedIndex} = state;
 
-const yAxisInterval = maxYValue / (ROWS_LINE_COUNT - 1);
+  const updateState = (key, value) =>
+    setState(prevState => ({...prevState, [key]: value}));
 
-const Chart = () => {
-	const [containerWidth, setContainerWidth] = useState(0)
-	const [pos, setPos] = useState({ x: 0, y: 0 })
-	const [indexs, setindex] = useState(0)
+  const YaxisLabelHeightOffset = height - XLabelHeightOffset;
+  const maxYValue = roundUp(
+    chartData?.reduce((a, b) => (b?.value > a?.value ? b : a))?.value,
+  );
+  const yAxisInterval = maxYValue / (gridLineCount - 1);
 
-	const XaxisInterval = useMemo(() => containerWidth / (data.length + 1), [containerWidth, data.length])
+  const XaxisInterval = containerWidth / (chartData?.length + 1);
 
-	return (
-		<View style={{ backgroundColor: '#fff', }}>
-			<Svg onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)} height={height} width='100%'>
+  const updateWidth = event =>
+    updateState('containerWidth', event.nativeEvent.layout.width);
 
-				<G transform={`translate(0, 30)`}>
-					{/* row */}
+  const onClickBar = (index, x, y) => {
+    setState(prevState => ({...prevState, x, y, selectedIndex: index}));
+  };
 
-					{Array.from({ length: ROWS_LINE_COUNT }).map((_, index) => {
-						const YAxislabel = yAxisInterval * index
-						const YAxis = YaxisLabelHeightOffset - (index * yAxisInterval / maxYValue) * YaxisLabelHeightOffset;
+  const [a, b] = useState(0);
 
-						return <React.Fragment key={index}>
-							{YAxislabel ? <Text x={3} y={YAxis - 5} fill="#000" fontSize={15}>
-								{YAxislabel}
-							</Text> : null}
-							<Line x1={20} y1={YAxis} y2={YAxis} x2='100%' stroke="#000" />
-						</React.Fragment>
-					})}
+  if (!chartData && !chartData?.length) {
+    return null;
+  }
 
-					<Defs>
-						<ClipPath id="cuts">
-							<Rect x="0" y="0" width="100%" height={YaxisLabelHeightOffset} />
-						</ClipPath>
-					</Defs>
+  return (
+    <View style={containerStyle}>
+      <Svg onLayout={updateWidth} height={height} width={'100%'}>
+        <G transform={'translate(0, 30)'}>
+          {/* row */}
+          {Array.from({length: gridLineCount}).map((_, index) => {
+            const YAxislabel = yAxisInterval * index;
+            const YAxis =
+              YaxisLabelHeightOffset -
+              ((index * yAxisInterval) / maxYValue) * YaxisLabelHeightOffset;
+            return (
+              <React.Fragment key={index}>
+                {!isNaN(YAxis) ? (
+                  <>
+                    {YAxislabel ? (
+                      <Text x={5} y={YAxis} fill="#768293" fontSize={15}>
+                        {YAxislabel.toFixed(0)}
+                      </Text>
+                    ) : null}
+                    <Line
+                      x1={30}
+                      y1={YAxis}
+                      y2={YAxis}
+                      x2="100%"
+                      stroke="#F0F7FF"
+                    />
+                  </>
+                ) : null}
+              </React.Fragment>
+            );
+          })}
 
+          {/* column */}
+          <Defs>
+            <ClipPath id="cuts">
+              <Rect x="0" y="0" width="100%" height={YaxisLabelHeightOffset} />
+            </ClipPath>
+            <LinearGradient id="odd-gradient" x1="0" y1="0" x2="1" y2="1">
+              <Stop offset={'100%'} stopColor={'#07C54D'} stopOpacity={1} />
+              <Stop offset={'100%'} stopColor={'#06AC43'} stopOpacity={1} />
+            </LinearGradient>
+            <LinearGradient id="even-gradient" x1="0" y1="0" x2="1" y2="1">
+              <Stop offset={'100%'} stopColor={'#FA7061'} stopOpacity={1} />
+              <Stop offset={'100%'} stopColor={'#F86649'} stopOpacity={1} />
+            </LinearGradient>
+          </Defs>
+          {console.log(a)}
+          {chartData?.map((item, index) => {
+            const YAxisHeight =
+              YaxisLabelHeightOffset * (a || item?.value / maxYValue);
+            const XAxisInterval = XaxisInterval * (index + 1);
 
-
-
-					{/* column */}
-
-					{data.map((item, index) => {
-						console.log(index)
-						const YAxisHeight = YaxisLabelHeightOffset * (item?.percentage / maxYValue);
-						const XAxisInterval = XaxisInterval * (index + 1)
-
-						return <View key={item?.percentage + index}>
-							{indexs === index + 1 && <>
-								<View style={{ position: 'relative', top: pos.y, left: pos.x }}>
-									<View style={{ top: '100%', transform: [{ rotate: '-40deg' }], width: 10, height: 1, backgroundColor: '#C4CFDE' }} />
-									<View style={{ height: 30, width: 30, backgroundColor: 'white', borderColor: '#C4CFDE', borderWidth: 1, borderRadius: 15, justifyContent: 'center', alignItems: 'center', }}>
-										<RNText style={{ color: '#45505F' }}>{Math.round(item.percentage)}</RNText>
-									</View>
-								</View>
-							</>
-							}
-							<Rect
-								onPress={() => {
-									setPos({ x: XAxisInterval + 7, y: YaxisLabelHeightOffset - YAxisHeight - 5 })
-									setindex(index + 1)
-								}}
-								x={XAxisInterval}
-								y={YaxisLabelHeightOffset - YAxisHeight}
-								width="10"
-								height={YAxisHeight + XLabelHeightOffset}
-								fill="green"
-								rx={5}
-								ry={5}
-								clipPath='url(#cuts)'
-							/>
-							{item?.percentage ? <Text textAnchor='middle' x={XAxisInterval + 5} y={YaxisLabelHeightOffset + 20} fill="#000" fontSize={15}>
-								{item?.percentage}
-							</Text> : null}
-						</View>
-					})}
-				</G>
-			</Svg>
-		</View >
-	);
+            return (
+              <G key={item?.value + index}>
+                {selectedIndex === index ? (
+                  <>
+                    <View style={{top: y, left: x}}>
+                      <View
+                        style={{
+                          top: '100%',
+                          transform: [{rotate: '-40deg'}],
+                          width: 10,
+                          height: 1,
+                          backgroundColor: '#C4CFDE',
+                        }}
+                      />
+                      <View
+                        style={{
+                          height: 30,
+                          width: 30,
+                          backgroundColor: 'white',
+                          borderColor: '#C4CFDE',
+                          borderWidth: 1,
+                          borderRadius: 15,
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                        }}>
+                        <RNText style={{color: '#45505F'}}>
+                          {Math.round(item.value)}
+                        </RNText>
+                      </View>
+                    </View>
+                  </>
+                ) : null}
+                <Rect
+                  onPressIn={() =>
+                    onClickBar(
+                      index,
+                      XAxisInterval + 7,
+                      YaxisLabelHeightOffset - YAxisHeight - 5,
+                    )
+                  }
+                  x={XAxisInterval}
+                  // y={YaxisLabelHeightOffset - YAxisHeight}
+                  y={
+                    YaxisLabelHeightOffset - a ||
+                    YaxisLabelHeightOffset - YAxisHeight
+                  }
+                  width="10"
+                  height={YAxisHeight}
+                  fill={
+                    index % 2 === 0
+                      ? 'url(#odd-gradient)'
+                      : 'url(#even-gradient)'
+                  }
+                  rx={5}
+                  ry={5}
+                  clipPath="url(#cuts)"
+                />
+                {item?.label ? (
+                  <Text
+                    textAnchor="middle"
+                    x={XAxisInterval + 5}
+                    y={YaxisLabelHeightOffset + 20}
+                    fill={'green'}
+                    fontFamily="wantedSans-Regular"
+                    fontSize={14}>
+                    {item?.label}
+                  </Text>
+                ) : null}
+              </G>
+            );
+          })}
+        </G>
+      </Svg>
+      <Button title="click" onPress={() => b(r => (r -= -10))} />
+    </View>
+  );
 };
 
 export default Chart;
